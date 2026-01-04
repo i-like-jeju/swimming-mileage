@@ -194,9 +194,11 @@ async function saveRecord() {
   let proofUrl = null;
   const file = document.getElementById("proof").files[0];
   if (file) {
-    const path = `${Date.now()}_${file.name}`;
-    await sb.storage.from("proofs").upload(path, file);
-    proofUrl = sb.storage.from("proofs").getPublicUrl(path).data.publicUrl;
+    const ext = file.name.split('.').pop();
+    const safeName = `${Date.now()}.${ext}`; // 한글/특수문자 제거
+    const { error } = await sb.storage.from("proofs").upload(safeName, file, { upsert: true });
+    if (error) return alert("파일 업로드 실패: " + error.message);
+    proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
   }
 
   await sb.from("records").insert({
