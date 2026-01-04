@@ -86,9 +86,6 @@ button {
   display: flex;
   justify-content: space-between;
 }
-.rank {
-  margin-right: 4px;
-}
 a {
   text-decoration: none;
   margin-left: 4px;
@@ -180,7 +177,7 @@ teamSelect.onchange = async () => {
   const { data } = await sb
     .from("members")
     .select("*")
-    .eq("team_id", teamSelect.value)
+    .eq("team_id", parseInt(teamSelect.value))
     .order("id");
 
   memberSelect.innerHTML = `<option value="">멤버 선택</option>`;
@@ -191,6 +188,10 @@ teamSelect.onchange = async () => {
 };
 
 async function saveRecord() {
+  const memberId = parseInt(memberSelect.value);
+  const baseDistance = parseFloat(distance.value);
+  if (!memberId || isNaN(baseDistance)) return alert("팀과 멤버, 거리를 정확히 입력해주세요.");
+
   let w = 1;
   if (w3.checked) w *= 1.1;
   if (wSea.checked) w *= 2;
@@ -199,18 +200,18 @@ async function saveRecord() {
   let displayName = null;
   const file = document.getElementById("proof").files[0];
   if (file) {
-    displayName = file.name; // 화면에 표시할 파일명
+    displayName = file.name;
     const ext = file.name.split('.').pop();
-    const safeName = `${Date.now()}.${ext}`; // 실제 업로드 경로
+    const safeName = `${Date.now()}.${ext}`; // 안전한 파일명
     const { error } = await sb.storage.from("proofs").upload(safeName, file, { upsert: true });
     if (error) return alert("파일 업로드 실패: " + error.message);
     proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
   }
 
   await sb.from("records").insert({
-    member_id: memberSelect.value,
-    base_distance: distance.value,
-    weighted_mileage: (distance.value * w).toFixed(3),
+    member_id: memberId,
+    base_distance: baseDistance,
+    weighted_mileage: parseFloat((baseDistance * w).toFixed(3)),
     weight_3person: w3.checked,
     weight_sea: wSea.checked,
     proof_url: proofUrl,
