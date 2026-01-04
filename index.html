@@ -4,48 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>수영 마일리지 현황</title>
-
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
 *, *::before, *::after { box-sizing: border-box; }
 html, body {
-  margin: 0; padding: 0; width: 100%;
-  overflow-x: hidden;
-  font-family: system-ui;
-  background: #f5f6f8;
+  margin:0; padding:0; width:100%;
+  overflow-x:hidden; font-family:system-ui;
+  background:#f5f6f8;
 }
-h1 { text-align: center; padding: 16px 8px; margin: 0; }
-.container { width: 100%; max-width: 480px; margin: auto; padding: 12px; }
+h1 { text-align:center; padding:16px 8px; margin:0; }
+.container { max-width:480px; margin:auto; padding:12px; }
 .card {
-  background: #fff; border-radius: 12px;
-  padding: 16px; margin-bottom: 16px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+  background:#fff; border-radius:12px;
+  padding:16px; margin-bottom:16px;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
 }
-select, input, button {
-  width: 100%; padding: 10px; margin-top: 6px;
-  border-radius: 8px; border: 1px solid #ccc;
-  font-size: 16px;
+select,input,button {
+  width:100%; padding:10px; margin-top:6px;
+  border-radius:8px; border:1px solid #ccc;
+  font-size:16px;
 }
-button { background: #0066ff; color: #fff; font-weight: bold; border: none; }
+button { background:#0066ff; color:#fff; font-weight:bold; border:none; }
 .check {
-  display: grid; grid-template-columns: 20px 1fr;
-  gap: 8px; font-size: 14px; margin-top: 8px;
+  display:grid; grid-template-columns:20px 1fr;
+  gap:8px; font-size:14px; margin-top:8px;
 }
-.check span { word-break: break-word; }
+.check span { word-break:break-word; }
 .preview {
-  background: #eef3ff; padding: 8px;
-  border-radius: 6px; margin-top: 10px;
-  font-size: 14px;
+  background:#eef3ff; padding:8px;
+  border-radius:6px; margin-top:10px;
+  font-size:14px;
 }
 .progress {
-  width: 100%; height: 10px;
-  background: #ddd; border-radius: 6px;
-  overflow: hidden; margin: 6px 0 10px;
+  width:100%; height:10px; background:#ddd;
+  border-radius:6px; overflow:hidden;
+  margin:6px 0 10px;
 }
-.progress div { height: 100%; background: #4caf50; }
-.team { margin-top: 14px; font-weight: bold; }
-.member, .rank { font-size: 14px; margin-left: 10px; }
+.progress div { height:100%; background:#4caf50; }
+.team { margin-top:14px; font-weight:bold; }
+.member { font-size:14px; margin-left:10px; }
+.rank { font-size:14px; margin-left:10px; }
+a { color:#0066ff; text-decoration:none; }
 </style>
 </head>
 
@@ -55,12 +55,9 @@ button { background: #0066ff; color: #fff; font-weight: bold; border: none; }
 <div class="container">
 
 <div class="card">
-<h2>기록 추가 / 수정</h2>
-
+<h2>기록 추가</h2>
 <select id="teamSelect"></select>
 <select id="memberSelect" disabled></select>
-
-<!-- ✅ 입력: 소숫점 3자리 -->
 <input type="number" id="distance" step="0.001" placeholder="예: 3.125">
 
 <div class="check"><input type="checkbox" id="w3"><span>3인 수영 (x1.1)</span></div>
@@ -99,17 +96,28 @@ const dist = document.getElementById("distance");
 const w3 = document.getElementById("w3");
 const wSea = document.getElementById("wSea");
 
-function floor1(n){ return Math.floor(n * 10) / 10; }
+function floor1(n){ return Math.floor(n*10)/10; }
 
 function calc(){
   let w=1;
   if(w3.checked)w*=1.1;
   if(wSea.checked)w*=2;
-  document.getElementById("wText").innerText="x"+w.toFixed(1);
-  document.getElementById("mText").innerText=
-    floor1((dist.value||0)*w).toFixed(1);
+  wText.innerText="x"+w.toFixed(1);
+  mText.innerText=floor1((dist.value||0)*w).toFixed(1);
 }
 dist.oninput=w3.onchange=wSea.onchange=calc;
+
+function renderProofLinks(memberId, records){
+  const proofs = records.filter(r=>r.member_id===memberId && r.proof_url);
+  if(proofs.length===0) return "";
+  return `
+    <div style="margin-left:18px;font-size:13px;">
+      ${proofs.map((p,i)=>
+        `<a href="${p.proof_url}" target="_blank">📎 증빙${i+1}</a>`
+      ).join(" · ")}
+    </div>
+  `;
+}
 
 async function init(){
   const {data:teams}=await sb.from("teams").select("*").order("id");
@@ -129,7 +137,7 @@ async function saveRecord(){
   if(wSea.checked)w*=2;
 
   let proof=null;
-  const f=document.getElementById("proof").files[0];
+  const f=proofInput.files[0];
   if(f){
     const p=`proofs/${Date.now()}_${f.name}`;
     await sb.storage.from("proofs").upload(p,f);
@@ -154,17 +162,13 @@ async function load(){
   const {data:members}=await sb.from("members").select("*");
   const {data:records}=await sb.from("records").select("*");
 
-  const sum={};
-  records.forEach(r=>{
-    sum[r.member_id]=(sum[r.member_id]||0)+Number(r.weighted_mileage);
-  });
-
   ranking.innerHTML="";
-  Object.entries(sum).sort((a,b)=>b[1]-a[1])
-    .forEach(([id,v],i)=>{
-      const name=members.find(m=>m.id==id).name;
-      ranking.innerHTML+=`<div class="rank">${i+1}. ${name} ${floor1(v).toFixed(1)}km</div>`;
-    });
+  const sum={};
+  records.forEach(r=>sum[r.member_id]=(sum[r.member_id]||0)+Number(r.weighted_mileage));
+  Object.entries(sum).sort((a,b)=>b[1]-a[1]).forEach(([id,v],i)=>{
+    const name=members.find(m=>m.id==id).name;
+    ranking.innerHTML+=`<div class="rank">${i+1}. ${name} ${floor1(v).toFixed(1)}km</div>`;
+  });
 
   board.innerHTML="";
   teams.forEach(t=>{
@@ -179,12 +183,16 @@ async function load(){
 
     tm.map(m=>{
       const s=tr.filter(r=>r.member_id===m.id).reduce((a,b)=>a+Number(b.weighted_mileage),0);
-      return {name:m.name,sum:s};
-    }).sort((a,b)=>b.sum-a.sum)
-      .forEach((m,i)=>{
-        const medal=i==0?"🥇":i==1?"🥈":i==2?"🥉":"";
-        board.innerHTML+=`<div class="member">${m.name} ${floor1(m.sum).toFixed(1)}km ${medal}</div>`;
-      });
+      return {id:m.id,name:m.name,sum:s};
+    }).sort((a,b)=>b.sum-a.sum).forEach((m,i)=>{
+      const medal=i==0?"🥇":i==1?"🥈":i==2?"🥉":"";
+      board.innerHTML+=`
+        <div class="member">
+          ${m.name} ${floor1(m.sum).toFixed(1)}km ${medal}
+          ${renderProofLinks(m.id, records)}
+        </div>
+      `;
+    });
   });
 }
 
