@@ -121,7 +121,7 @@ a {
 
 <div class="preview">
 가중치: <b id="weightText">x1</b><br>
-반영 마일리지: <b id="resultText">0.000</b> km
+반영 마일리지: <b id="resultText">0.0</b> km
 </div>
 
 <label>증빙 파일</label>
@@ -160,7 +160,10 @@ function calc() {
   if (wSea.checked) w *= 2;
   const d = parseFloat(distance.value) || 0;
   document.getElementById("weightText").innerText = "x" + w.toFixed(1);
-  document.getElementById("resultText").innerText = (d * w).toFixed(3);
+
+  // 가중치 적용 후 소숫점 2자리 버림, 1자리 표시
+  const weighted = Math.floor(d * w * 100) / 100;
+  document.getElementById("resultText").innerText = weighted.toFixed(1);
 }
 distance.oninput = w3.onchange = wSea.onchange = calc;
 
@@ -208,10 +211,13 @@ async function saveRecord() {
     proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
   }
 
+  // 소숫점 2자리 버림, 1자리 표시는 화면용, DB는 3자리까지 저장
+  const weightedMileage = parseFloat((Math.floor(baseDistance * w * 1000) / 1000).toFixed(3));
+
   await sb.from("records").insert({
     member_id: memberId,
     base_distance: baseDistance,
-    weighted_mileage: parseFloat((baseDistance * w).toFixed(3)),
+    weighted_mileage: weightedMileage,
     weight_3person: w3.checked,
     weight_sea: wSea.checked,
     proof_url: proofUrl,
@@ -246,7 +252,7 @@ async function loadBoard() {
     .sort((a,b)=>b.total-a.total)
     .forEach((m,i)=>{
       const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}위`;
-      globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${m.total.toFixed(1)}km</span></div>`;
+      globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${(Math.floor(m.total*10)/10).toFixed(1)}km</span></div>`;
     });
 
   // 팀별 현황
@@ -261,7 +267,7 @@ async function loadBoard() {
     const teamSum = teamTotals.reduce((s,m)=>s+m.total,0);
 
     board.innerHTML += `
-      <div class="team">● ${t.name} (${teamSum.toFixed(1)} / ${t.target_mileage})</div>
+      <div class="team">● ${t.name} (${(Math.floor(teamSum*10)/10).toFixed(1)} / ${t.target_mileage})</div>
       <div class="progress"><div style="width:${Math.min(100,teamSum/t.target_mileage*100)}%"></div></div>
     `;
 
@@ -271,7 +277,7 @@ async function loadBoard() {
       board.innerHTML += `
         <div class="member">
           <span>${medal} ${m.name}</span>
-          <span>${m.total.toFixed(1)}km ${
+          <span>${(Math.floor(m.total*10)/10).toFixed(1)}km ${
             proof ? `<a href="${proof.proof_url}" target="_blank">${proof.proof_name || '📎'}</a>` : ""
           }</span>
         </div>`;
