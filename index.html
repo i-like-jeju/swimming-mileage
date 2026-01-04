@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>마일리지 현황</title>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
 body {
-  font-family: system-ui, -apple-system;
   margin: 0;
+  font-family: system-ui, -apple-system;
   background: #f5f6f8;
 }
 h1 {
@@ -18,9 +18,9 @@ h1 {
   padding: 16px;
 }
 .container {
-  padding: 12px;
   max-width: 480px;
   margin: auto;
+  padding: 12px;
 }
 .card {
   background: #fff;
@@ -31,9 +31,8 @@ h1 {
 }
 label {
   font-weight: 600;
-  display: block;
   margin-top: 10px;
-  font-size: 14px;
+  display: block;
 }
 select, input, button {
   width: 100%;
@@ -45,22 +44,21 @@ select, input, button {
 button {
   background: #0066ff;
   color: #fff;
+  font-weight: bold;
   border: none;
   margin-top: 14px;
-  font-weight: bold;
 }
 
-/* ✅ 체크박스 모바일 대응 */
-.weights label {
-  display: flex;
-  align-items: flex-start;
+/* ✅ 체크박스 모바일 안전 스타일 */
+.check {
+  display: grid;
+  grid-template-columns: 20px 1fr;
   gap: 8px;
-  font-weight: normal;
   margin-top: 6px;
+  font-size: 14px;
 }
-.weights span {
-  flex: 1;
-  line-height: 1.4;
+.check span {
+  white-space: normal;
   word-break: keep-all;
 }
 
@@ -76,25 +74,18 @@ button {
   background: #ddd;
   border-radius: 6px;
   overflow: hidden;
-  margin-top: 6px;
 }
 .progress div {
   height: 100%;
   background: #4caf50;
 }
-.team-title {
+.team {
+  margin-top: 14px;
   font-weight: bold;
-  margin-top: 12px;
 }
-ul {
-  padding-left: 16px;
-}
-li {
+.member {
   font-size: 14px;
-  margin-bottom: 4px;
-}
-a {
-  font-size: 12px;
+  margin-left: 10px;
 }
 </style>
 </head>
@@ -104,39 +95,38 @@ a {
 
 <div class="container">
 
-<!-- 입력 폼 -->
 <div class="card">
-  <h2>기록 추가</h2>
+<h2>기록 추가</h2>
 
-  <label>팀</label>
-  <select id="teamSelect"></select>
+<label>팀</label>
+<select id="teamSelect"></select>
 
-  <label>멤버</label>
-  <select id="memberSelect" disabled></select>
+<label>멤버</label>
+<select id="memberSelect" disabled></select>
 
-  <label>수영 거리 (km)</label>
-  <input type="number" id="distance" step="0.1">
+<label>거리 (km)</label>
+<input type="number" id="distance" step="0.1">
 
-  <div class="weights">
-    <label><input type="checkbox" id="w3"><span>3인 수영 (x1.1)</span></label>
-    <label><input type="checkbox" id="wSea"><span>바다 수영 (x2)</span></label>
-  </div>
-
-  <div class="preview">
-    적용 가중치: <b id="weightText">x1</b><br>
-    반영 마일리지: <b id="resultText">0</b> km
-  </div>
-
-  <label>증빙 파일</label>
-  <input type="file" id="proof">
-
-  <button onclick="saveRecord()">저장</button>
+<div class="check">
+  <input type="checkbox" id="w3">
+  <span>3인 수영 (x1.1)</span>
+</div>
+<div class="check">
+  <input type="checkbox" id="wSea">
+  <span>바다 수영 (x2)</span>
 </div>
 
-<!-- 현재 기록 현황 -->
+<div class="preview">
+가중치: <b id="weightText">x1</b><br>
+반영 마일리지: <b id="resultText">0</b> km
+</div>
+
+<button onclick="saveRecord()">저장</button>
+</div>
+
 <div class="card">
-  <h2>현재 기록 현황</h2>
-  <div id="board"></div>
+<h2>현재 기록</h2>
+<div id="board"></div>
 </div>
 
 </div>
@@ -149,19 +139,19 @@ const sb = supabase.createClient(
 
 const teamSelect = document.getElementById("teamSelect");
 const memberSelect = document.getElementById("memberSelect");
-const distanceInput = document.getElementById("distance");
+const distance = document.getElementById("distance");
 const w3 = document.getElementById("w3");
 const wSea = document.getElementById("wSea");
 
-function calcWeight() {
+function calc() {
   let w = 1;
   if (w3.checked) w *= 1.1;
   if (wSea.checked) w *= 2;
-  const d = parseFloat(distanceInput.value) || 0;
+  const d = parseFloat(distance.value) || 0;
   document.getElementById("weightText").innerText = "x" + w.toFixed(1);
   document.getElementById("resultText").innerText = (d * w).toFixed(1);
 }
-distanceInput.oninput = w3.onchange = wSea.onchange = calcWeight;
+distance.oninput = w3.onchange = wSea.onchange = calc;
 
 async function loadTeams() {
   const { data } = await sb.from("teams").select("*").order("id");
@@ -173,9 +163,6 @@ async function loadTeams() {
 
 teamSelect.onchange = async () => {
   memberSelect.disabled = true;
-  memberSelect.innerHTML = "";
-  if (!teamSelect.value) return;
-
   const { data } = await sb
     .from("members")
     .select("*")
@@ -184,4 +171,59 @@ teamSelect.onchange = async () => {
 
   memberSelect.innerHTML = `<option value="">멤버 선택</option>`;
   data.forEach(m => {
-    memberSelect.innerHTML += `<option value="${m.id}">${
+    memberSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+  });
+  memberSelect.disabled = false;
+};
+
+async function saveRecord() {
+  let w = 1;
+  if (w3.checked) w *= 1.1;
+  if (wSea.checked) w *= 2;
+
+  await sb.from("records").insert({
+    member_id: memberSelect.value,
+    weighted_mileage: (distance.value * w).toFixed(1)
+  });
+
+  distance.value = "";
+  w3.checked = wSea.checked = false;
+  calc();
+  loadBoard();
+}
+
+async function loadBoard() {
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+
+  const { data: teams } = await sb.from("teams").select("*").order("id");
+  const { data: members } = await sb.from("members").select("*");
+  const { data: records } = await sb.from("records").select("*");
+
+  teams.forEach(t => {
+    const teamMembers = members.filter(m => m.team_id === t.id);
+    const teamRecords = records.filter(r =>
+      teamMembers.some(m => m.id === r.member_id)
+    );
+
+    const total = teamRecords.reduce((s,r)=>s+Number(r.weighted_mileage),0);
+
+    board.innerHTML += `
+      <div class="team">● ${t.name} (${total.toFixed(1)} / ${t.target_mileage})</div>
+      <div class="progress"><div style="width:${Math.min(100,total/t.target_mileage*100)}%"></div></div>
+    `;
+
+    teamMembers.forEach(m => {
+      const sum = teamRecords
+        .filter(r => r.member_id === m.id)
+        .reduce((s,r)=>s+Number(r.weighted_mileage),0);
+      board.innerHTML += `<div class="member">${m.name} ${sum.toFixed(1)}km</div>`;
+    });
+  });
+}
+
+loadTeams();
+loadBoard();
+</script>
+</body>
+</html>
