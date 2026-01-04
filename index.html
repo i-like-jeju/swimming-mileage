@@ -200,10 +200,8 @@ async function saveRecord() {
   if (wSea.checked) w *= 2;
 
   let proofUrl = null;
-  let displayName = null;
   const file = document.getElementById("proof").files[0];
   if (file) {
-    displayName = file.name;
     const ext = file.name.split('.').pop();
     const safeName = `${Date.now()}.${ext}`; // 안전한 파일명
     const { error } = await sb.storage.from("proofs").upload(safeName, file, { upsert: true });
@@ -211,7 +209,6 @@ async function saveRecord() {
     proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
   }
 
-  // 소숫점 2자리 버림, 1자리 표시는 화면용, DB는 3자리까지 저장
   const weightedMileage = parseFloat((Math.floor(baseDistance * w * 1000) / 1000).toFixed(3));
 
   await sb.from("records").insert({
@@ -220,8 +217,7 @@ async function saveRecord() {
     weighted_mileage: weightedMileage,
     weight_3person: w3.checked,
     weight_sea: wSea.checked,
-    proof_url: proofUrl,
-    proof_name: displayName
+    proof_url: proofUrl
   });
 
   distance.value = "";
@@ -278,7 +274,7 @@ async function loadBoard() {
         <div class="member">
           <span>${medal} ${m.name}</span>
           <span>${(Math.floor(m.total*10)/10).toFixed(1)}km ${
-            proof ? `<a href="${proof.proof_url}" target="_blank">${proof.proof_name || '📎'}</a>` : ""
+            proof ? `<a href="${proof.proof_url}" target="_blank">📎</a>` : ""
           }</span>
         </div>`;
     });
