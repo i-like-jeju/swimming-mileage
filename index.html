@@ -89,6 +89,10 @@ button {
 .rank {
   margin-right: 4px;
 }
+a {
+  text-decoration: none;
+  margin-left: 4px;
+}
 </style>
 </head>
 
@@ -192,10 +196,12 @@ async function saveRecord() {
   if (wSea.checked) w *= 2;
 
   let proofUrl = null;
+  let displayName = null;
   const file = document.getElementById("proof").files[0];
   if (file) {
+    displayName = file.name; // 화면에 표시할 파일명
     const ext = file.name.split('.').pop();
-    const safeName = `${Date.now()}.${ext}`; // 한글/특수문자 제거
+    const safeName = `${Date.now()}.${ext}`; // 실제 업로드 경로
     const { error } = await sb.storage.from("proofs").upload(safeName, file, { upsert: true });
     if (error) return alert("파일 업로드 실패: " + error.message);
     proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
@@ -207,7 +213,8 @@ async function saveRecord() {
     weighted_mileage: (distance.value * w).toFixed(3),
     weight_3person: w3.checked,
     weight_sea: wSea.checked,
-    proof_url: proofUrl
+    proof_url: proofUrl,
+    proof_name: displayName
   });
 
   distance.value = "";
@@ -227,7 +234,7 @@ async function loadBoard() {
   const { data: members } = await sb.from("members").select("*");
   const { data: records } = await sb.from("records").select("*");
 
-  /* 전체 멤버 순위 */
+  // 전체 멤버 순위
   const totals = {};
   records.forEach(r => {
     totals[r.member_id] = (totals[r.member_id] || 0) + Number(r.weighted_mileage);
@@ -241,7 +248,7 @@ async function loadBoard() {
       globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${m.total.toFixed(1)}km</span></div>`;
     });
 
-  /* 팀별 */
+  // 팀별 현황
   teams.forEach(t => {
     const teamMembers = members.filter(m => m.team_id === t.id);
     const teamTotals = teamMembers.map(m => ({
@@ -263,7 +270,9 @@ async function loadBoard() {
       board.innerHTML += `
         <div class="member">
           <span>${medal} ${m.name}</span>
-          <span>${m.total.toFixed(1)}km ${proof?`<a href="${proof.proof_url}" target="_blank">📎</a>`:""}</span>
+          <span>${m.total.toFixed(1)}km ${
+            proof ? `<a href="${proof.proof_url}" target="_blank">${proof.proof_name || '📎'}</a>` : ""
+          }</span>
         </div>`;
     });
   });
