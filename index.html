@@ -8,82 +8,19 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system;
-  background: #f5f6f8;
-}
-h1 {
-  text-align: center;
-  padding: 16px;
-}
-.container {
-  max-width: 480px;
-  margin: auto;
-  padding: 12px;
-}
-.card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.08);
-}
-label {
-  font-weight: 600;
-  margin-top: 10px;
-  display: block;
-}
-select, input, button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 6px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
-button {
-  background: #0066ff;
-  color: #fff;
-  font-weight: bold;
-  border: none;
-  margin-top: 14px;
-}
-.check {
-  display: grid;
-  grid-template-columns: 20px 1fr;
-  gap: 8px;
-  margin-top: 6px;
-  font-size: 14px;
-}
-.check span {
-  white-space: normal;
-  word-break: keep-all;
-}
-.preview {
-  margin-top: 10px;
-  background: #eef3ff;
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 14px;
-}
-.progress {
-  height: 10px;
-  background: #ddd;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.progress div {
-  height: 100%;
-  background: #4caf50;
-}
-.team {
-  margin-top: 14px;
-  font-weight: bold;
-}
-.member {
-  font-size: 14px;
-  margin-left: 10px;
-}
+body { margin:0; font-family:system-ui; background:#f5f6f8; }
+h1 { text-align:center; padding:16px; }
+.container { max-width:480px; margin:auto; padding:12px; }
+.card { background:#fff; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+select,input,button { width:100%; padding:10px; margin-top:6px; border-radius:8px; border:1px solid #ccc; }
+button { background:#0066ff; color:#fff; font-weight:bold; border:none; }
+.check { display:grid; grid-template-columns:20px 1fr; gap:8px; font-size:14px; margin-top:6px; }
+.preview { background:#eef3ff; padding:8px; border-radius:6px; margin-top:10px; font-size:14px; }
+.progress { height:10px; background:#ddd; border-radius:6px; overflow:hidden; }
+.progress div { height:100%; background:#4caf50; }
+.team { margin-top:14px; font-weight:bold; }
+.member { font-size:14px; margin-left:10px; }
+.rank { font-size:14px; }
 </style>
 </head>
 
@@ -93,39 +30,32 @@ button {
 <div class="container">
 
 <div class="card">
-<h2>기록 추가</h2>
+<h2>기록 추가 / 수정</h2>
 
-<label>팀</label>
 <select id="teamSelect"></select>
-
-<label>멤버</label>
 <select id="memberSelect" disabled></select>
 
-<label>거리 (km)</label>
-<input type="number" id="distance" step="0.001" placeholder="예: 1.235">
+<input type="number" id="distance" step="0.001" placeholder="거리 km">
 
-<div class="check">
-  <input type="checkbox" id="w3">
-  <span>3인 수영 (x1.1)</span>
-</div>
-<div class="check">
-  <input type="checkbox" id="wSea">
-  <span>바다 수영 (x2)</span>
-</div>
+<div class="check"><input type="checkbox" id="w3"><span>3인 수영 (x1.1)</span></div>
+<div class="check"><input type="checkbox" id="wSea"><span>바다 수영 (x2)</span></div>
 
 <div class="preview">
-가중치: <b id="weightText">x1</b><br>
-반영 마일리지: <b id="resultText">0.000</b> km
+가중치: <b id="wText">x1</b><br>
+반영 마일리지: <b id="mText">0.000</b>
 </div>
 
-<label>증빙 파일</label>
-<input type="file" id="proof" accept="image/*,application/pdf">
-
-<button onclick="saveRecord()">저장</button>
+<input type="file" id="proof">
+<button onclick="save()">저장</button>
 </div>
 
 <div class="card">
-<h2>현재 기록</h2>
+<h2>🏆 멤버 랭킹</h2>
+<div id="ranking"></div>
+</div>
+
+<div class="card">
+<h2>팀 현황</h2>
 <div id="board"></div>
 </div>
 
@@ -137,105 +67,103 @@ const sb = supabase.createClient(
   "sb_publishable_13HduBGv5qjNmCusvyfkMw_fcV1V6Jm"
 );
 
-const teamSelect = document.getElementById("teamSelect");
-const memberSelect = document.getElementById("memberSelect");
-const distance = document.getElementById("distance");
+const teamSel = document.getElementById("teamSelect");
+const memberSel = document.getElementById("memberSelect");
+const dist = document.getElementById("distance");
 const w3 = document.getElementById("w3");
 const wSea = document.getElementById("wSea");
 
-function calc() {
-  let w = 1;
-  if (w3.checked) w *= 1.1;
-  if (wSea.checked) w *= 2;
-  const d = parseFloat(distance.value) || 0;
-  document.getElementById("weightText").innerText = "x" + w.toFixed(1);
-  document.getElementById("resultText").innerText = (d * w).toFixed(3);
+function calc(){
+  let w=1;
+  if(w3.checked)w*=1.1;
+  if(wSea.checked)w*=2;
+  document.getElementById("wText").innerText="x"+w.toFixed(1);
+  document.getElementById("mText").innerText=((dist.value||0)*w).toFixed(3);
 }
-distance.oninput = w3.onchange = wSea.onchange = calc;
+dist.oninput=w3.onchange=wSea.onchange=calc;
 
-async function loadTeams() {
-  const { data } = await sb.from("teams").select("*").order("id");
-  teamSelect.innerHTML = `<option value="">팀 선택</option>`;
-  data.forEach(t => {
-    teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-  });
+async function init(){
+  const {data:teams}=await sb.from("teams").select("*").order("id");
+  teamSel.innerHTML=`<option value="">팀 선택</option>`;
+  teams.forEach(t=>teamSel.innerHTML+=`<option value="${t.id}">${t.name}</option>`);
 }
-
-teamSelect.onchange = async () => {
-  memberSelect.disabled = true;
-  const { data } = await sb
-    .from("members")
-    .select("*")
-    .eq("team_id", teamSelect.value)
-    .order("id");
-
-  memberSelect.innerHTML = `<option value="">멤버 선택</option>`;
-  data.forEach(m => {
-    memberSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`;
-  });
-  memberSelect.disabled = false;
+teamSel.onchange=async()=>{
+  const {data}=await sb.from("members").select("*").eq("team_id",teamSel.value);
+  memberSel.innerHTML=`<option value="">멤버 선택</option>`;
+  data.forEach(m=>memberSel.innerHTML+=`<option value="${m.id}">${m.name}</option>`);
+  memberSel.disabled=false;
 };
 
-async function saveRecord() {
-  let w = 1;
-  if (w3.checked) w *= 1.1;
-  if (wSea.checked) w *= 2;
+async function save(){
+  let w=1;
+  if(w3.checked)w*=1.1;
+  if(wSea.checked)w*=2;
 
-  let proofUrl = null;
-  const file = document.getElementById("proof").files[0];
-  if (file) {
-    const path = `proofs/${Date.now()}_${file.name}`;
-    await sb.storage.from("proofs").upload(path, file);
-    proofUrl = sb.storage.from("proofs").getPublicUrl(path).data.publicUrl;
+  let proof=null;
+  const f=document.getElementById("proof").files[0];
+  if(f){
+    const p=`proofs/${Date.now()}_${f.name}`;
+    await sb.storage.from("proofs").upload(p,f);
+    proof=sb.storage.from("proofs").getPublicUrl(p).data.publicUrl;
   }
 
   await sb.from("records").insert({
-    member_id: memberSelect.value,
-    base_distance: distance.value,
-    weighted_mileage: (distance.value * w).toFixed(3),
-    weight_3person: w3.checked,
-    weight_sea: wSea.checked,
-    proof_url: proofUrl
+    member_id:memberSel.value,
+    base_distance:dist.value,
+    weighted_mileage:(dist.value*w).toFixed(3),
+    weight_3person:w3.checked,
+    weight_sea:wSea.checked,
+    proof_url:proof
   });
 
-  distance.value = "";
-  w3.checked = wSea.checked = false;
-  document.getElementById("proof").value = "";
-  calc();
-  loadBoard();
+  dist.value=""; w3.checked=wSea.checked=false; calc();
+  load();
 }
 
-async function loadBoard() {
-  const board = document.getElementById("board");
-  board.innerHTML = "";
+async function load(){
+  const {data:teams}=await sb.from("teams").select("*");
+  const {data:members}=await sb.from("members").select("*");
+  const {data:records}=await sb.from("records").select("*");
 
-  const { data: teams } = await sb.from("teams").select("*").order("id");
-  const { data: members } = await sb.from("members").select("*");
-  const { data: records } = await sb.from("records").select("*");
+  /* 랭킹 */
+  const sums={};
+  records.forEach(r=>{
+    sums[r.member_id]=(sums[r.member_id]||0)+Number(r.weighted_mileage);
+  });
+  const rankDiv=document.getElementById("ranking");
+  rankDiv.innerHTML="";
+  Object.entries(sums)
+    .sort((a,b)=>b[1]-a[1])
+    .forEach(([id,val],i)=>{
+      const name=members.find(m=>m.id==id).name;
+      rankDiv.innerHTML+=`<div class="rank">${i+1}. ${name} ${val.toFixed(3)}km</div>`;
+    });
 
-  teams.forEach(t => {
-    const teamMembers = members.filter(m => m.team_id === t.id);
-    const teamRecords = records.filter(r =>
-      teamMembers.some(m => m.id === r.member_id)
-    );
-    const total = teamRecords.reduce((s,r)=>s+Number(r.weighted_mileage),0);
+  /* 팀 */
+  const board=document.getElementById("board");
+  board.innerHTML="";
+  teams.forEach(t=>{
+    const tm=members.filter(m=>m.team_id===t.id);
+    const tr=records.filter(r=>tm.some(m=>m.id===r.member_id));
+    const total=tr.reduce((s,r)=>s+Number(r.weighted_mileage),0);
 
-    board.innerHTML += `
-      <div class="team">● ${t.name} (${total.toFixed(3)} / ${t.target_mileage})</div>
-      <div class="progress"><div style="width:${Math.min(100,total/t.target_mileage*100)}%"></div></div>
-    `;
+    board.innerHTML+=`<div class="team">● ${t.name} (${total.toFixed(3)}/${t.target_mileage})</div>
+    <div class="progress"><div style="width:${Math.min(100,total/t.target_mileage*100)}%"></div></div>`;
 
-    teamMembers.forEach(m => {
-      const sum = teamRecords
-        .filter(r => r.member_id === m.id)
-        .reduce((s,r)=>s+Number(r.weighted_mileage),0);
-      board.innerHTML += `<div class="member">${m.name} ${sum.toFixed(3)}km</div>`;
+    const sorted=tm.map(m=>{
+      const s=tr.filter(r=>r.member_id===m.id).reduce((a,b)=>a+Number(b.weighted_mileage),0);
+      return {name:m.name,sum:s};
+    }).sort((a,b)=>b.sum-a.sum);
+
+    sorted.forEach((m,i)=>{
+      const medal=i==0?"🥇":i==1?"🥈":i==2?"🥉":"";
+      board.innerHTML+=`<div class="member">${m.name} ${m.sum.toFixed(3)}km ${medal}</div>`;
     });
   });
 }
 
-loadTeams();
-loadBoard();
+init();
+load();
 </script>
 </body>
 </html>
