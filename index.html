@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>마일리지 현황</title>
 
-  <!-- Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase JS (전역 supabase 객체 생성됨) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      font-family: system-ui, -apple-system;
       margin: 0;
       background: #f5f6f8;
     }
@@ -31,8 +31,8 @@
       box-shadow: 0 2px 6px rgba(0,0,0,.08);
     }
     label {
-      display: block;
       font-weight: 600;
+      display: block;
       margin-top: 10px;
       font-size: 14px;
     }
@@ -42,38 +42,30 @@
       margin-top: 6px;
       border-radius: 8px;
       border: 1px solid #ccc;
-      font-size: 14px;
     }
     button {
       background: #0066ff;
-      color: #fff;
+      color: white;
+      font-weight: bold;
       border: none;
       margin-top: 14px;
-      font-weight: bold;
-    }
-    button:active {
-      opacity: .8;
     }
     .weights label {
       font-weight: normal;
       display: flex;
       gap: 6px;
       align-items: center;
-      margin-top: 6px;
     }
     .preview {
       margin-top: 10px;
-      font-size: 14px;
-      background: #f0f3ff;
+      background: #eef3ff;
       padding: 8px;
       border-radius: 6px;
-    }
-    .team {
-      margin-bottom: 20px;
+      font-size: 14px;
     }
     .progress {
       height: 10px;
-      background: #e0e0e0;
+      background: #ddd;
       border-radius: 6px;
       overflow: hidden;
       margin-top: 6px;
@@ -131,14 +123,15 @@
 
   <!-- 팀 현황 -->
   <div id="teams"></div>
-
 </div>
 
 <script>
-  /* 🔧 Supabase 설정 */
-  const supabase = supabaseJs.createClient(
-    "https://tsropshzbqrfladkgwsr.supabase.co",
-    "sb_publishable_13HduBGv5qjNmCusvyfkMw_fcV1V6Jm"
+  /* ===============================
+     Supabase 클라이언트 생성
+     =============================== */
+  const sb = supabase.createClient(
+    "https://YOUR_PROJECT_ID.supabase.co",
+    "YOUR_ANON_PUBLIC_KEY"
   );
 
   const teamSelect = document.getElementById("teamSelect");
@@ -147,6 +140,7 @@
   const w3 = document.getElementById("w3");
   const wSea = document.getElementById("wSea");
 
+  /* 가중치 계산 */
   function calcWeight() {
     let w = 1;
     if (w3.checked) w *= 1.1;
@@ -155,27 +149,40 @@
     document.getElementById("weightText").innerText = "x" + w.toFixed(1);
     document.getElementById("resultText").innerText = (d * w).toFixed(1);
   }
-
   distanceInput.oninput = w3.onchange = wSea.onchange = calcWeight;
 
+  /* 팀 로드 */
   async function loadTeams() {
-    const { data } = await supabase.from("teams").select("*").order("id");
+    const { data, error } = await sb
+      .from("teams")
+      .select("*")
+      .order("id");
+
+    if (error) {
+      console.error(error);
+      alert("팀 데이터를 불러오지 못했습니다");
+      return;
+    }
+
     teamSelect.innerHTML = `<option value="">팀 선택</option>`;
     data.forEach(t => {
       teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
   }
 
+  /* 멤버 로드 */
   teamSelect.onchange = async () => {
+    const teamId = teamSelect.value;
     memberSelect.disabled = true;
     memberSelect.innerHTML = "";
-    const teamId = teamSelect.value;
+
     if (!teamId) return;
 
-    const { data } = await supabase
+    const { data } = await sb
       .from("members")
       .select("*")
-      .eq("team_id", teamId);
+      .eq("team_id", teamId)
+      .order("id");
 
     memberSelect.innerHTML = `<option value="">멤버 선택</option>`;
     data.forEach(m => {
@@ -184,6 +191,7 @@
     memberSelect.disabled = false;
   };
 
+  /* 기록 저장 */
   async function saveRecord() {
     if (!memberSelect.value || !distanceInput.value) {
       alert("필수 항목을 입력하세요");
@@ -198,12 +206,12 @@
     const file = document.getElementById("proof").files[0];
     if (file) {
       const path = `proofs/${Date.now()}_${file.name}`;
-      await supabase.storage.from("proofs").upload(path, file);
-      const { data } = supabase.storage.from("proofs").getPublicUrl(path);
+      await sb.storage.from("proofs").upload(path, file);
+      const { data } = sb.storage.from("proofs").getPublicUrl(path);
       proofUrl = data.publicUrl;
     }
 
-    await supabase.from("records").insert({
+    await sb.from("records").insert({
       member_id: memberSelect.value,
       base_distance: distanceInput.value,
       weight_3person: w3.checked,
@@ -216,14 +224,14 @@
     location.reload();
   }
 
+  /* 게시판 로드 */
   async function loadBoard() {
-    const { data: teams } = await supabase.from("teams").select("*").order("id");
-
+    const { data: teams } = await sb.from("teams").select("*").order("id");
     const container = document.getElementById("teams");
     container.innerHTML = "";
 
     for (const t of teams) {
-      const { data: rows } = await supabase
+      const { data: rows } = await sb
         .from("records")
         .select("weighted_mileage, proof_url, members(name)")
         .eq("members.team_id", t.id);
@@ -232,13 +240,13 @@
       const percent = Math.min(100, total / t.target_mileage * 100);
 
       let html = `
-        <div class="card team">
+        <div class="card">
           <h3>${t.name} (${total.toFixed(1)} / ${t.target_mileage})</h3>
           <div class="progress"><div style="width:${percent}%"></div></div>
           <ul>
       `;
 
-      rows.forEach(r=>{
+      rows.forEach(r => {
         html += `<li>${r.members.name} : ${r.weighted_mileage}km
           ${r.proof_url ? `<a href="${r.proof_url}" target="_blank">[증빙]</a>` : ``}
         </li>`;
