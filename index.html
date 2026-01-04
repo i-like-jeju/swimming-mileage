@@ -48,8 +48,6 @@ button {
   border: none;
   margin-top: 14px;
 }
-
-/* ✅ 체크박스 모바일 안전 스타일 */
 .check {
   display: grid;
   grid-template-columns: 20px 1fr;
@@ -61,7 +59,6 @@ button {
   white-space: normal;
   word-break: keep-all;
 }
-
 .preview {
   margin-top: 10px;
   background: #eef3ff;
@@ -105,7 +102,7 @@ button {
 <select id="memberSelect" disabled></select>
 
 <label>거리 (km)</label>
-<input type="number" id="distance" step="0.1">
+<input type="number" id="distance" step="0.001" placeholder="예: 1.235">
 
 <div class="check">
   <input type="checkbox" id="w3">
@@ -118,8 +115,11 @@ button {
 
 <div class="preview">
 가중치: <b id="weightText">x1</b><br>
-반영 마일리지: <b id="resultText">0</b> km
+반영 마일리지: <b id="resultText">0.000</b> km
 </div>
+
+<label>증빙 파일</label>
+<input type="file" id="proof" accept="image/*,application/pdf">
 
 <button onclick="saveRecord()">저장</button>
 </div>
@@ -133,8 +133,8 @@ button {
 
 <script>
 const sb = supabase.createClient(
-  "https://tsropshzbqrfladkgwsr.supabase.co",
-  "sb_publishable_13HduBGv5qjNmCusvyfkMw_fcV1V6Jm"
+  "https://YOUR_PROJECT_ID.supabase.co",
+  "YOUR_ANON_PUBLIC_KEY"
 );
 
 const teamSelect = document.getElementById("teamSelect");
@@ -149,7 +149,7 @@ function calc() {
   if (wSea.checked) w *= 2;
   const d = parseFloat(distance.value) || 0;
   document.getElementById("weightText").innerText = "x" + w.toFixed(1);
-  document.getElementById("resultText").innerText = (d * w).toFixed(1);
+  document.getElementById("resultText").innerText = (d * w).toFixed(3);
 }
 distance.oninput = w3.onchange = wSea.onchange = calc;
 
@@ -181,13 +181,26 @@ async function saveRecord() {
   if (w3.checked) w *= 1.1;
   if (wSea.checked) w *= 2;
 
+  let proofUrl = null;
+  const file = document.getElementById("proof").files[0];
+  if (file) {
+    const path = `proofs/${Date.now()}_${file.name}`;
+    await sb.storage.from("proofs").upload(path, file);
+    proofUrl = sb.storage.from("proofs").getPublicUrl(path).data.publicUrl;
+  }
+
   await sb.from("records").insert({
     member_id: memberSelect.value,
-    weighted_mileage: (distance.value * w).toFixed(1)
+    base_distance: distance.value,
+    weighted_mileage: (distance.value * w).toFixed(3),
+    weight_3person: w3.checked,
+    weight_sea: wSea.checked,
+    proof_url: proofUrl
   });
 
   distance.value = "";
   w3.checked = wSea.checked = false;
+  document.getElementById("proof").value = "";
   calc();
   loadBoard();
 }
@@ -205,11 +218,10 @@ async function loadBoard() {
     const teamRecords = records.filter(r =>
       teamMembers.some(m => m.id === r.member_id)
     );
-
     const total = teamRecords.reduce((s,r)=>s+Number(r.weighted_mileage),0);
 
     board.innerHTML += `
-      <div class="team">● ${t.name} (${total.toFixed(1)} / ${t.target_mileage})</div>
+      <div class="team">● ${t.name} (${total.toFixed(3)} / ${t.target_mileage})</div>
       <div class="progress"><div style="width:${Math.min(100,total/t.target_mileage*100)}%"></div></div>
     `;
 
@@ -217,7 +229,7 @@ async function loadBoard() {
       const sum = teamRecords
         .filter(r => r.member_id === m.id)
         .reduce((s,r)=>s+Number(r.weighted_mileage),0);
-      board.innerHTML += `<div class="member">${m.name} ${sum.toFixed(1)}km</div>`;
+      board.innerHTML += `<div class="member">${m.name} ${sum.toFixed(3)}km</div>`;
     });
   });
 }
