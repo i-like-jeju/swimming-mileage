@@ -83,6 +83,11 @@ button {
 .member {
   font-size: 14px;
   margin-left: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+.rank {
+  margin-right: 4px;
 }
 </style>
 </head>
@@ -122,6 +127,11 @@ button {
 <input type="file" id="proof" accept="image/*,application/pdf">
 
 <button onclick="saveRecord()">저장</button>
+</div>
+
+<div class="card">
+<h2>🏅 전체 멤버 순위</h2>
+<div id="globalRank"></div>
 </div>
 
 <div class="card">
@@ -184,7 +194,7 @@ async function saveRecord() {
   let proofUrl = null;
   const file = document.getElementById("proof").files[0];
   if (file) {
-    const path = `proofs/${Date.now()}_${file.name}`;
+    const path = `${Date.now()}_${file.name}`;
     await sb.storage.from("proofs").upload(path, file);
     proofUrl = sb.storage.from("proofs").getPublicUrl(path).data.publicUrl;
   }
@@ -207,29 +217,52 @@ async function saveRecord() {
 
 async function loadBoard() {
   const board = document.getElementById("board");
+  const globalRank = document.getElementById("globalRank");
   board.innerHTML = "";
+  globalRank.innerHTML = "";
 
   const { data: teams } = await sb.from("teams").select("*").order("id");
   const { data: members } = await sb.from("members").select("*");
   const { data: records } = await sb.from("records").select("*");
 
+  /* 전체 멤버 순위 */
+  const totals = {};
+  records.forEach(r => {
+    totals[r.member_id] = (totals[r.member_id] || 0) + Number(r.weighted_mileage);
+  });
+
+  members
+    .map(m => ({ name: m.name, total: totals[m.id] || 0 }))
+    .sort((a,b)=>b.total-a.total)
+    .forEach((m,i)=>{
+      const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}위`;
+      globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${m.total.toFixed(1)}km</span></div>`;
+    });
+
+  /* 팀별 */
   teams.forEach(t => {
     const teamMembers = members.filter(m => m.team_id === t.id);
-    const teamRecords = records.filter(r =>
-      teamMembers.some(m => m.id === r.member_id)
-    );
-    const total = teamRecords.reduce((s,r)=>s+Number(r.weighted_mileage),0);
+    const teamTotals = teamMembers.map(m => ({
+      ...m,
+      total: records.filter(r=>r.member_id===m.id)
+                    .reduce((s,r)=>s+Number(r.weighted_mileage),0)
+    })).sort((a,b)=>b.total-a.total);
+
+    const teamSum = teamTotals.reduce((s,m)=>s+m.total,0);
 
     board.innerHTML += `
-      <div class="team">● ${t.name} (${total.toFixed(3)} / ${t.target_mileage})</div>
-      <div class="progress"><div style="width:${Math.min(100,total/t.target_mileage*100)}%"></div></div>
+      <div class="team">● ${t.name} (${teamSum.toFixed(1)} / ${t.target_mileage})</div>
+      <div class="progress"><div style="width:${Math.min(100,teamSum/t.target_mileage*100)}%"></div></div>
     `;
 
-    teamMembers.forEach(m => {
-      const sum = teamRecords
-        .filter(r => r.member_id === m.id)
-        .reduce((s,r)=>s+Number(r.weighted_mileage),0);
-      board.innerHTML += `<div class="member">${m.name} ${sum.toFixed(3)}km</div>`;
+    teamTotals.forEach((m,i)=>{
+      const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":"";
+      const proof = records.find(r=>r.member_id===m.id && r.proof_url);
+      board.innerHTML += `
+        <div class="member">
+          <span>${medal} ${m.name}</span>
+          <span>${m.total.toFixed(1)}km ${proof?`<a href="${proof.proof_url}" target="_blank">📎</a>`:""}</span>
+        </div>`;
     });
   });
 }
