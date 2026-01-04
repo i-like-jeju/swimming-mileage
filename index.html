@@ -1,194 +1,72 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>수영 마일리지 현황</title>
+/* ===============================
+   1. 기존 데이터 전체 삭제
+   =============================== */
+delete from records;
+delete from members;
+delete from teams;
 
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+/* ===============================
+   2. 팀 데이터 입력
+   =============================== */
+insert into teams (id, name, target_mileage) values
+(1, '1팀', 107.5),
+(2, '2팀', 112.0),
+(3, '3팀', 109.0);
 
-<style>
-*, *::before, *::after { box-sizing: border-box; }
-html, body {
-  margin: 0; padding: 0; width: 100%;
-  overflow-x: hidden;
-  font-family: system-ui;
-  background: #f5f6f8;
-}
-h1 { text-align: center; padding: 16px 8px; margin: 0; }
-.container { width: 100%; max-width: 480px; margin: auto; padding: 12px; }
-.card {
-  background: #fff; border-radius: 12px;
-  padding: 16px; margin-bottom: 16px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.08);
-}
-select, input, button {
-  width: 100%; padding: 10px; margin-top: 6px;
-  border-radius: 8px; border: 1px solid #ccc;
-  font-size: 16px;
-}
-button { background: #0066ff; color: #fff; font-weight: bold; border: none; }
-.check {
-  display: grid; grid-template-columns: 20px 1fr;
-  gap: 8px; font-size: 14px; margin-top: 8px;
-}
-.check span { word-break: break-word; }
-.preview {
-  background: #eef3ff; padding: 8px;
-  border-radius: 6px; margin-top: 10px;
-  font-size: 14px;
-}
-.progress {
-  width: 100%; height: 10px;
-  background: #ddd; border-radius: 6px;
-  overflow: hidden; margin: 6px 0 10px;
-}
-.progress div { height: 100%; background: #4caf50; }
-.team { margin-top: 14px; font-weight: bold; }
-.member, .rank { font-size: 14px; margin-left: 10px; }
-</style>
-</head>
+/* ===============================
+   3. 멤버 데이터 입력
+   =============================== */
+insert into members (id, team_id, name) values
+-- 1팀
+(1, 1, '선명'),
+(2, 1, '희원'),
+(3, 1, '창익'),
+(4, 1, '수연'),
+(5, 1, '원효'),
+(6, 1, '병학'),
 
-<body>
-<h1>🏊 수영 마일리지 현황</h1>
+-- 2팀
+(7, 2, '학이'),
+(8, 2, '성혜'),
+(9, 2, '창환'),
+(10, 2, '정표'),
+(11, 2, '한석'),
+(12, 2, '명환'),
 
-<div class="container">
+-- 3팀
+(13, 3, '박철'),
+(14, 3, '석민'),
+(15, 3, '민정'),
+(16, 3, '윤찬'),
+(17, 3, '전은'),
+(18, 3, '이들');
 
-<div class="card">
-<h2>기록 추가 / 수정</h2>
+/* ===============================
+   4. 기록 데이터 입력
+   =============================== */
+insert into records
+(member_id, base_distance, weighted_mileage, weight_3person, weight_sea, proof_url)
+values
+-- 1팀
+(1, 8.400, 8.400, false, false, null), -- 선명
+(2, 2.000, 2.000, false, false, null), -- 희원
+(3, 3.600, 3.600, false, false, null), -- 창익
+(4, 6.000, 6.000, false, false, null), -- 수연
+(5, 7.200, 7.200, false, false, null), -- 원효
+(6, 6.200, 6.200, false, false, null), -- 병학
 
-<select id="teamSelect"></select>
-<select id="memberSelect" disabled></select>
+-- 2팀
+(7, 9.400, 9.400, false, false, null), -- 학이
+(8, 5.500, 5.500, false, false, null), -- 성혜
+(9, 11.400, 11.400, false, false, null), -- 창환
+(10, 5.500, 5.500, false, false, null), -- 정표
+(11, 9.500, 9.500, false, false, null), -- 한석
+(12, 5.100, 5.100, false, false, null), -- 명환
 
-<!-- ✅ 입력: 소숫점 3자리 -->
-<input type="number" id="distance" step="0.001" placeholder="예: 3.125">
-
-<div class="check"><input type="checkbox" id="w3"><span>3인 수영 (x1.1)</span></div>
-<div class="check"><input type="checkbox" id="wSea"><span>바다 수영 (x2)</span></div>
-
-<div class="preview">
-가중치: <b id="wText">x1</b><br>
-반영 마일리지: <b id="mText">0.0</b>
-</div>
-
-<input type="file" id="proof">
-<button onclick="saveRecord()">저장</button>
-</div>
-
-<div class="card">
-<h2>🏆 멤버 랭킹</h2>
-<div id="ranking"></div>
-</div>
-
-<div class="card">
-<h2>팀 현황</h2>
-<div id="board"></div>
-</div>
-
-</div>
-
-<script>
-const sb = supabase.createClient(
-  "https://tsropshzbqrfladkgwsr.supabase.co",
-  "sb_publishable_13HduBGv5qjNmCusvyfkMw_fcV1V6Jm"
-);
-
-const teamSel = document.getElementById("teamSelect");
-const memberSel = document.getElementById("memberSelect");
-const dist = document.getElementById("distance");
-const w3 = document.getElementById("w3");
-const wSea = document.getElementById("wSea");
-
-function floor1(n){ return Math.floor(n * 10) / 10; }
-
-function calc(){
-  let w=1;
-  if(w3.checked)w*=1.1;
-  if(wSea.checked)w*=2;
-  document.getElementById("wText").innerText="x"+w.toFixed(1);
-  document.getElementById("mText").innerText=
-    floor1((dist.value||0)*w).toFixed(1);
-}
-dist.oninput=w3.onchange=wSea.onchange=calc;
-
-async function init(){
-  const {data:teams}=await sb.from("teams").select("*").order("id");
-  teamSel.innerHTML=`<option value="">팀 선택</option>`;
-  teams.forEach(t=>teamSel.innerHTML+=`<option value="${t.id}">${t.name}</option>`);
-}
-teamSel.onchange=async()=>{
-  const {data}=await sb.from("members").select("*").eq("team_id",teamSel.value);
-  memberSel.innerHTML=`<option value="">멤버 선택</option>`;
-  data.forEach(m=>memberSel.innerHTML+=`<option value="${m.id}">${m.name}</option>`);
-  memberSel.disabled=false;
-};
-
-async function saveRecord(){
-  let w=1;
-  if(w3.checked)w*=1.1;
-  if(wSea.checked)w*=2;
-
-  let proof=null;
-  const f=document.getElementById("proof").files[0];
-  if(f){
-    const p=`proofs/${Date.now()}_${f.name}`;
-    await sb.storage.from("proofs").upload(p,f);
-    proof=sb.storage.from("proofs").getPublicUrl(p).data.publicUrl;
-  }
-
-  await sb.from("records").insert({
-    member_id:memberSel.value,
-    base_distance:Number(dist.value).toFixed(3),
-    weighted_mileage:(dist.value*w).toFixed(3),
-    weight_3person:w3.checked,
-    weight_sea:wSea.checked,
-    proof_url:proof
-  });
-
-  dist.value=""; w3.checked=wSea.checked=false; calc();
-  load();
-}
-
-async function load(){
-  const {data:teams}=await sb.from("teams").select("*");
-  const {data:members}=await sb.from("members").select("*");
-  const {data:records}=await sb.from("records").select("*");
-
-  const sum={};
-  records.forEach(r=>{
-    sum[r.member_id]=(sum[r.member_id]||0)+Number(r.weighted_mileage);
-  });
-
-  ranking.innerHTML="";
-  Object.entries(sum).sort((a,b)=>b[1]-a[1])
-    .forEach(([id,v],i)=>{
-      const name=members.find(m=>m.id==id).name;
-      ranking.innerHTML+=`<div class="rank">${i+1}. ${name} ${floor1(v).toFixed(1)}km</div>`;
-    });
-
-  board.innerHTML="";
-  teams.forEach(t=>{
-    const tm=members.filter(m=>m.team_id===t.id);
-    const tr=records.filter(r=>tm.some(m=>m.id===r.member_id));
-    const total=tr.reduce((s,r)=>s+Number(r.weighted_mileage),0);
-
-    board.innerHTML+=`
-      <div class="team">● ${t.name} (${floor1(total).toFixed(1)} / ${t.target_mileage})</div>
-      <div class="progress"><div style="width:${Math.min(100,total/t.target_mileage*100)}%"></div></div>
-    `;
-
-    tm.map(m=>{
-      const s=tr.filter(r=>r.member_id===m.id).reduce((a,b)=>a+Number(b.weighted_mileage),0);
-      return {name:m.name,sum:s};
-    }).sort((a,b)=>b.sum-a.sum)
-      .forEach((m,i)=>{
-        const medal=i==0?"🥇":i==1?"🥈":i==2?"🥉":"";
-        board.innerHTML+=`<div class="member">${m.name} ${floor1(m.sum).toFixed(1)}km ${medal}</div>`;
-      });
-  });
-}
-
-init(); load();
-</script>
-</body>
-</html>
+-- 3팀
+(13, 8.500, 8.500, false, false, null), -- 박철
+(14, 14.200, 14.200, false, false, null), -- 석민
+(15, 5.200, 5.200, false, false, null), -- 민정
+(16, 10.500, 10.500, false, false, null), -- 윤찬
+(17, 4.600, 4.600, false, false, null), -- 전은
+(18, 4.400, 4.400, false, false, null); -- 이들
