@@ -8,6 +8,9 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
+* {
+  box-sizing: border-box; /* 카드 안에서 넘치지 않도록 */
+}
 body {
   margin: 0;
   font-family: system-ui, -apple-system;
@@ -40,6 +43,7 @@ select, input, button {
   margin-top: 6px;
   border-radius: 8px;
   border: 1px solid #ccc;
+  box-sizing: border-box; /* 입력박스가 카드 너비 넘어가지 않도록 */
 }
 button {
   background: #0066ff;
@@ -161,7 +165,6 @@ function calc() {
   const d = parseFloat(distance.value) || 0;
   document.getElementById("weightText").innerText = "x" + w.toFixed(1);
 
-  // 가중치 적용 후 소숫점 2자리 버림, 1자리 표시
   const weighted = Math.floor(d * w * 100) / 100;
   document.getElementById("resultText").innerText = weighted.toFixed(1);
 }
@@ -203,7 +206,7 @@ async function saveRecord() {
   const file = document.getElementById("proof").files[0];
   if (file) {
     const ext = file.name.split('.').pop();
-    const safeName = `${Date.now()}.${ext}`; // 안전한 파일명
+    const safeName = `${Date.now()}.${ext}`;
     const { error } = await sb.storage.from("proofs").upload(safeName, file, { upsert: true });
     if (error) return alert("파일 업로드 실패: " + error.message);
     proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
@@ -237,7 +240,6 @@ async function loadBoard() {
   const { data: members } = await sb.from("members").select("*");
   const { data: records } = await sb.from("records").select("*");
 
-  // 전체 멤버 순위
   const totals = {};
   records.forEach(r => {
     totals[r.member_id] = (totals[r.member_id] || 0) + Number(r.weighted_mileage);
@@ -251,7 +253,6 @@ async function loadBoard() {
       globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${(Math.floor(m.total*10)/10).toFixed(1)}km</span></div>`;
     });
 
-  // 팀별 현황
   teams.forEach(t => {
     const teamMembers = members.filter(m => m.team_id === t.id);
     const teamTotals = teamMembers.map(m => ({
