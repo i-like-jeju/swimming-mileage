@@ -5,13 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>🏊‍♂️ 수영 마일리지 현황</title>
 
-  <!-- Supabase JS v2 -->
+  <!-- Supabase JS v2 (전역 supabase 객체 생성됨) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -20,10 +18,7 @@
       background: #f6f7f9;
     }
 
-    h1 {
-      font-size: 20px;
-      margin-bottom: 12px;
-    }
+    h1 { font-size: 20px; margin-bottom: 12px; }
 
     section {
       background: #fff;
@@ -38,7 +33,7 @@
       display: block;
     }
 
-    select, input[type="number"], input[type="file"], button {
+    select, input, button {
       width: 100%;
       padding: 10px;
       margin-top: 6px;
@@ -56,10 +51,6 @@
       white-space: normal;
     }
 
-    .checkbox-row input {
-      flex-shrink: 0;
-    }
-
     button {
       background: #2563eb;
       color: white;
@@ -67,18 +58,9 @@
       margin-top: 14px;
     }
 
-    button:active {
-      opacity: 0.8;
-    }
+    .team { margin-bottom: 16px; }
 
-    .team {
-      margin-bottom: 16px;
-    }
-
-    .team-title {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
+    .team-title { font-weight: bold; margin-bottom: 6px; }
 
     .progress {
       width: 100%;
@@ -102,9 +84,7 @@
       border-bottom: 1px dashed #eee;
     }
 
-    .member:last-child {
-      border-bottom: none;
-    }
+    .member:last-child { border-bottom: none; }
 
     .proof {
       margin-left: 6px;
@@ -128,17 +108,17 @@
   <input id="distance" type="number" step="0.001" placeholder="예: 5.25" />
 
   <div class="checkbox-row">
-    <input type="checkbox" id="w3" />
+    <input type="checkbox" id="w3">
     <label for="w3">3인 수영 (x1.1)</label>
   </div>
 
   <div class="checkbox-row">
-    <input type="checkbox" id="wSea" />
+    <input type="checkbox" id="wSea">
     <label for="wSea">바다 수영 (x2)</label>
   </div>
 
   <label>증빙 이미지</label>
-  <input type="file" id="proof" accept="image/*" />
+  <input type="file" id="proof" accept="image/*">
 
   <button onclick="saveRecord()">기록 저장</button>
 </section>
@@ -152,80 +132,76 @@
   /* ===============================
      Supabase 설정
      =============================== */
-  const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
-  const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+  const SUPABASE_URL = "https://tsropshzbqrfladkgwsr.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_13HduBGv5qjNmCusvyfkMw_fcV1V6Jm";
 
-  const supabase = window.supabase.createClient(
+  // ❗ 이름 변경 (중요)
+  const supabaseClient = window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY
   );
 
   /* ===============================
-     DOM 요소
+     DOM
      =============================== */
   const teamSel = document.getElementById("teamSelect");
   const memberSel = document.getElementById("memberSelect");
   const dist = document.getElementById("distance");
   const w3 = document.getElementById("w3");
   const wSea = document.getElementById("wSea");
-  const proofInput = document.getElementById("proof"); // ✅ 에러 해결 핵심
+  const proofInput = document.getElementById("proof");
   const board = document.getElementById("board");
 
   let teams = [];
   let members = [];
 
-  /* ===============================
-     초기 로딩
-     =============================== */
-  loadInit();
+  init();
 
-  async function loadInit() {
+  async function init() {
     await loadTeams();
     await loadMembers();
-    renderTeamSelect();
-    renderMemberSelect();
+    renderTeams();
+    renderMembers();
     await loadBoard();
   }
 
   async function loadTeams() {
-    const { data } = await supabase.from("teams").select("*").order("id");
+    const { data } = await supabaseClient
+      .from("teams")
+      .select("*")
+      .order("id");
     teams = data || [];
   }
 
   async function loadMembers() {
-    const { data } = await supabase.from("members").select("*").order("id");
+    const { data } = await supabaseClient
+      .from("members")
+      .select("*")
+      .order("id");
     members = data || [];
   }
 
-  function renderTeamSelect() {
+  function renderTeams() {
     teamSel.innerHTML = "";
     teams.forEach(t => {
-      const opt = document.createElement("option");
-      opt.value = t.id;
-      opt.textContent = t.name;
-      teamSel.appendChild(opt);
+      teamSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
   }
 
-  function renderMemberSelect() {
+  function renderMembers() {
     memberSel.innerHTML = "";
-    const teamId = teamSel.value;
-    members.filter(m => m.team_id == teamId).forEach(m => {
-      const opt = document.createElement("option");
-      opt.value = m.id;
-      opt.textContent = m.name;
-      memberSel.appendChild(opt);
-    });
+    members
+      .filter(m => m.team_id == teamSel.value)
+      .forEach(m => {
+        memberSel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+      });
   }
 
-  teamSel.onchange = renderMemberSelect;
+  teamSel.onchange = renderMembers;
 
-  /* ===============================
-     기록 저장
-     =============================== */
   async function saveRecord() {
     const base = parseFloat(dist.value);
-    if (!base) return alert("거리를 입력하세요");
+    if (!base) return alert("거리 입력 필요");
 
     let weight = 1;
     if (w3.checked) weight *= 1.1;
@@ -238,23 +214,18 @@
 
     if (file) {
       const path = `${Date.now()}_${file.name}`;
-      const { error } = await supabase
-        .storage
-        .from("proofs")
+      const { error } = await supabaseClient
+        .storage.from("proofs")
         .upload(path, file);
 
-      if (error) {
-        alert("파일 업로드 실패");
-        return;
-      }
+      if (error) return alert("파일 업로드 실패");
 
-      proofUrl = supabase
-        .storage
-        .from("proofs")
+      proofUrl = supabaseClient
+        .storage.from("proofs")
         .getPublicUrl(path).data.publicUrl;
     }
 
-    await supabase.from("records").insert({
+    await supabaseClient.from("records").insert({
       member_id: memberSel.value,
       base_distance: base,
       weighted_mileage: weighted,
@@ -271,30 +242,20 @@
     await loadBoard();
   }
 
-  /* ===============================
-     현황 로드
-     =============================== */
   async function loadBoard() {
     board.innerHTML = "";
 
-    const { data: records } = await supabase
+    const { data: records } = await supabaseClient
       .from("records")
-      .select("*, members(name, team_id), teams(name, target_mileage)")
-      .order("id");
+      .select("*, members(name, team_id), teams(name, target_mileage)");
 
     teams.forEach(team => {
-      const teamRecords = records.filter(
-        r => r.members.team_id === team.id
-      );
+      const teamRecords = records.filter(r => r.members.team_id === team.id);
+      const total = teamRecords.reduce((s, r) => s + r.weighted_mileage, 0);
 
-      const total = teamRecords.reduce(
-        (s, r) => s + r.weighted_mileage, 0
-      );
-
-      const wrap = document.createElement("div");
-      wrap.className = "team";
-
-      wrap.innerHTML = `
+      const el = document.createElement("div");
+      el.className = "team";
+      el.innerHTML = `
         <div class="team-title">${team.name} (${total.toFixed(1)} / ${team.target_mileage})</div>
         <div class="progress">
           <div style="width:${Math.min(100, total / team.target_mileage * 100)}%"></div>
@@ -303,20 +264,20 @@
 
       teamRecords
         .sort((a, b) => b.weighted_mileage - a.weighted_mileage)
-        .forEach((r, idx) => {
-          const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
-          const row = document.createElement("div");
-          row.className = "member";
-          row.innerHTML = `
-            <span>${r.members.name} ${medal}</span>
-            <span>${r.weighted_mileage.toFixed(1)}km
-              ${r.proof_url ? `<a class="proof" href="${r.proof_url}" target="_blank">📎</a>` : ""}
-            </span>
+        .forEach((r, i) => {
+          const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "";
+          el.innerHTML += `
+            <div class="member">
+              <span>${r.members.name} ${medal}</span>
+              <span>
+                ${r.weighted_mileage.toFixed(1)}km
+                ${r.proof_url ? `<a class="proof" href="${r.proof_url}" target="_blank">📎</a>` : ""}
+              </span>
+            </div>
           `;
-          wrap.appendChild(row);
         });
 
-      board.appendChild(wrap);
+      board.appendChild(el);
     });
   }
 </script>
