@@ -9,7 +9,7 @@
 
 <style>
 * {
-  box-sizing: border-box; /* 카드 안에서 넘치지 않도록 */
+  box-sizing: border-box;
 }
 body {
   margin: 0;
@@ -43,7 +43,7 @@ select, input, button {
   margin-top: 6px;
   border-radius: 8px;
   border: 1px solid #ccc;
-  box-sizing: border-box; /* 입력박스가 카드 너비 넘어가지 않도록 */
+  box-sizing: border-box;
 }
 button {
   background: #0066ff;
@@ -165,8 +165,15 @@ function calc() {
   const d = parseFloat(distance.value) || 0;
   document.getElementById("weightText").innerText = "x" + w.toFixed(1);
 
-  const weighted = Math.floor(d * w * 100) / 100;
-  document.getElementById("resultText").innerText = weighted.toFixed(1);
+  let weighted;
+  if (w === 1) {
+    // 가중치 없으면 입력 그대로 반영
+    weighted = d;
+  } else {
+    // 가중치 있을 경우만 소수점 절삭
+    weighted = Math.floor(d * w * 100) / 100;
+  }
+  document.getElementById("resultText").innerText = weighted;
 }
 distance.oninput = w3.onchange = wSea.onchange = calc;
 
@@ -212,7 +219,9 @@ async function saveRecord() {
     proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
   }
 
-  const weightedMileage = parseFloat((Math.floor(baseDistance * w * 1000) / 1000).toFixed(3));
+  const weightedMileage = (w === 1) 
+    ? baseDistance  // 가중치 없으면 그대로
+    : parseFloat((Math.floor(baseDistance * w * 1000) / 1000).toFixed(3));
 
   await sb.from("records").insert({
     member_id: memberId,
