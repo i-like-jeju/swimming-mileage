@@ -142,9 +142,69 @@ a {
 <div class="card">
 <h2>현재 기록</h2>
 <div id="board"></div>
-</div>
+    <!-- 버튼 -->
+    <button onclick="shareKakao()" style="background: #fee500; color: #000; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.558 1.712 4.8 4.32 6.131l-.81 2.981c-.07.258.21.462.42.308l3.521-2.345c.504.088 1.021.14 1.549.14 4.97 0 9-3.185 9-7.115S16.97 3 12 3z"/>
+        </svg>
+        카톡 공유
+    </button>
 
 </div>
+
+<!-- 1. SDK 로드 -->
+<script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+<script>
+    // 2. SDK 초기화
+    Kakao.init('41ec28afdb74a9849655aeb3dc4096aa');
+
+    const dateString = new Date().toLocaleString('ko-KR', {
+        year: '2-digit', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+    }).replace(/\. /g, '.').replace(/\.$/, '').replace(/\.(?=[^.]*$)/, ' ');
+
+
+
+    function shareKakao() {
+        const board = document.getElementById('board');
+        let boardText = `🏊 마일리지 현황 (${dateString})\n`;
+
+        board.querySelectorAll('.team, .member').forEach(el => {
+            if (el.classList.contains('team')) {
+                boardText += `\n${el.innerText}\n`;
+            } else {
+                // 멤버 이름과 거리를 가져와서 한 칸 띄우고 나란히 배치
+                const spans = el.querySelectorAll('span');
+                if (spans.length >= 2) {
+                    const name = spans[0].innerText.trim();
+                    const distance = spans[1].innerText.replace('📎', '').trim();
+                    boardText += `${name} ${distance}\n`;
+                }
+            }
+        });
+
+        boardText += '\nhttps://i-like-jeju.github.io/swimming-mileage'
+
+        Kakao.Link.sendDefault({
+            objectType: 'text',
+            text: boardText,
+            link: {
+                mobileWebUrl: 'https://i-like-jeju.github.io/swimming-mileage',
+                webUrl: 'https://i-like-jeju.github.io/swimming-mileage'
+            },
+            buttons: [
+                {
+                    title: '웹으로 이동',
+                    link: {
+                        mobileWebUrl: 'https://i-like-jeju.github.io/swimming-mileage',
+                        webUrl: 'https://i-like-jeju.github.io/swimming-mileage'
+                    }
+                }
+            ]
+        });
+    }
+</script>
 
 <script>
 const sb = supabase.createClient(
