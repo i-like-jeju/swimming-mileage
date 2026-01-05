@@ -230,8 +230,8 @@ function calc() {
     // 가중치 없으면 입력 그대로 반영
     weighted = d;
   } else {
-    // 가중치 있을 경우만 소수점 절삭
-    weighted = Math.floor(d * w * 100) / 100;
+    // 가중치 있을 경우 소수점 2번째 자리 버림 (첫 번째 자리까지 유지)
+    weighted = Math.floor(d * w * 10) / 10;
   }
   document.getElementById("resultText").innerText = weighted;
 }
