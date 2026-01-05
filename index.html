@@ -225,14 +225,8 @@ function calc() {
   const d = parseFloat(distance.value) || 0;
   document.getElementById("weightText").innerText = "x" + w.toFixed(1);
 
-  let weighted;
-  if (w === 1) {
-    // 가중치 없으면 입력 그대로 반영
-    weighted = d;
-  } else {
-    // 가중치 있을 경우 소수점 2번째 자리 버림 (첫 번째 자리까지 유지)
-    weighted = Math.floor(d * w * 10) / 10;
-  }
+// 가중치 여부와 상관없이 소수점 2번째 자리 버림 (첫 번째 자리까지 유지)
+  const weighted = Math.floor(d * w * 10) / 10;
   document.getElementById("resultText").innerText = weighted;
 }
 distance.oninput = w3.onchange = wSea.onchange = calc;
