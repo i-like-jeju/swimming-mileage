@@ -336,7 +336,7 @@ async function loadBoard() {
       const proof = records.find(r=>r.member_id===m.id && r.proof_url);
       board.innerHTML += `
         <div class="member">
-          <span>${medal} ${m.name}</span>
+          <span>${medal} ${m.name} (${m.target_mileage || 0})</span>
           <span>${(Math.floor(m.total*10)/10).toFixed(1)}km ${
             proof ? `<a href="${proof.proof_url}" target="_blank">📎</a>` : ""
           }</span>
