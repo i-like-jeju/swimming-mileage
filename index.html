@@ -335,14 +335,14 @@ async function loadBoard() {
 
     teamTotals.forEach((m,i)=>{
       const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":"";
-      const proof = records.find(r=>r.member_id===m.id && r.proof_url);
       const record = records.findLast(r=>r.member_id===m.id);
+      const proof_url = record.proof_url;
       const simbol = record.weighted_mileage > 0 ? "+" : ""
       board.innerHTML += `
         <div class="member">
           <span>${medal} ${m.name} (${m.target_mileage || 0})</span>
           <span>${(Math.floor(m.total*10)/10).toFixed(1)}km (${simbol}${record.weighted_mileage}) ${
-            proof ? `<a href="${proof.proof_url}" target="_blank">📎</a>` : ""
+          proof_url ? `<a href="${proof_url}" target="_blank">📎</a>` : ""
           }</span>
         </div>`;
     });
