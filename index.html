@@ -259,6 +259,10 @@ async function saveRecord() {
   const baseDistance = parseFloat(distance.value);
   if (!memberId || isNaN(baseDistance)) return alert("팀과 멤버, 거리를 정확히 입력해주세요.");
 
+  if (baseDistance >= 10) {
+    if (!confirm(`입력하신 값이 ${baseDistance}km 가 맞습니까?`)) return;
+  }
+
   let w = 1;
   if (w3.checked) w *= 1.1;
   if (wSea.checked) w *= 2;
@@ -273,7 +277,7 @@ async function saveRecord() {
     proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
   }
 
-  const weightedMileage = (w === 1) 
+  const weightedMileage = (w === 1)
     ? baseDistance  // 가중치 없으면 그대로
     : parseFloat((Math.floor(baseDistance * w * 1000) / 1000).toFixed(3));
 
