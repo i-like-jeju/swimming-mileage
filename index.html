@@ -286,6 +286,7 @@ async function saveRecord() {
     proof_url: proofUrl
   });
 
+  alert("저장되었습니다.")
   distance.value = "";
   w3.checked = wSea.checked = false;
   document.getElementById("proof").value = "";
@@ -301,7 +302,7 @@ async function loadBoard() {
 
   const { data: teams } = await sb.from("teams").select("*").order("id");
   const { data: members } = await sb.from("members").select("*");
-  const { data: records } = await sb.from("records").select("*");
+  const { data: records } = await sb.from("records").select("*").order("id");
 
   const totals = {};
   records.forEach(r => {
@@ -335,10 +336,12 @@ async function loadBoard() {
     teamTotals.forEach((m,i)=>{
       const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":"";
       const proof = records.find(r=>r.member_id===m.id && r.proof_url);
+      const record = records.findLast(r=>r.member_id===m.id);
+      const simbol = record.weighted_mileage > 0 ? "+" : ""
       board.innerHTML += `
         <div class="member">
           <span>${medal} ${m.name} (${m.target_mileage || 0})</span>
-          <span>${(Math.floor(m.total*10)/10).toFixed(1)}km ${
+          <span>${(Math.floor(m.total*10)/10).toFixed(1)}km (${simbol}${record.weighted_mileage}) ${
             proof ? `<a href="${proof.proof_url}" target="_blank">📎</a>` : ""
           }</span>
         </div>`;
