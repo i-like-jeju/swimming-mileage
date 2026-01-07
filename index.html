@@ -329,7 +329,7 @@ async function loadBoard() {
                     .reduce((s,r)=>s+Number(r.weighted_mileage),0)
     })).sort((a,b)=>b.total-a.total);
 
-    const teamSum = teamTotals.reduce((s,m)=>s+m.total,0);
+    const teamSum = teamTotals.reduce((s, m) => s + (Math.floor(m.total * 10) / 10), 0);
     const achievementRate = t.target_mileage > 0 ? (teamSum / t.target_mileage * 100).toFixed(2) : "0.00";
 
     board.innerHTML += `
