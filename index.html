@@ -278,8 +278,8 @@ async function saveRecord() {
   }
 
   const weightedMileage = (w === 1)
-    ? baseDistance  // 가중치 없으면 그대로
-    : parseFloat((Math.floor(baseDistance * w * 1000) / 1000).toFixed(3));
+    ? parseFloat((Math.floor(baseDistance * 10) / 10).toFixed(1))  // 가중치 없으면 그대로
+    : parseFloat((Math.floor(baseDistance * w * 10) / 10).toFixed(1));
 
   await sb.from("records").insert({
     member_id: memberId,
