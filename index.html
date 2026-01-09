@@ -277,13 +277,14 @@ async function saveRecord() {
     proofUrl = sb.storage.from("proofs").getPublicUrl(safeName).data.publicUrl;
   }
 
+  const baseMileage = parseFloat((Math.floor(baseDistance * 10) / 10).toFixed(1));
   const weightedMileage = (w === 1)
-    ? parseFloat((Math.floor(baseDistance * 10) / 10).toFixed(1))  // 가중치 없으면 그대로
+    ? baseMileage  // 가중치 없으면 그대로
     : parseFloat((Math.floor(baseDistance * w * 10) / 10).toFixed(1));
 
   await sb.from("records").insert({
     member_id: memberId,
-    base_distance: baseDistance,
+    base_distance: baseMileage,
     weighted_mileage: weightedMileage,
     weight_3person: w3.checked,
     weight_sea: wSea.checked,
