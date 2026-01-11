@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이력 조회</title>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system;
+  background: #f5f6f8;
+}
+h1 {
+  text-align: center;
+  padding: 16px;
+}
+.container {
+  max-width: 480px;
+  margin: auto;
+  padding: 12px;
+}
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+}
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+.record-item:last-child {
+  border-bottom: none;
+}
+.record-info {
+  flex: 1;
+}
+.record-date {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 4px;
+}
+.record-distance {
+  font-size: 16px;
+  font-weight: 600;
+}
+.delete-btn {
+  background: none;
+  border: none;
+  color: #ff4444;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.delete-btn:hover {
+  background: #ffe0e0;
+}
+.back-btn {
+  display: inline-block;
+  margin: 16px;
+  padding: 10px 20px;
+  background: #0066ff;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+<h1>📋 이력 조회</h1>
+
+<div class="container">
+  <a href="index.html" class="back-btn">← 돌아가기</a>
+  <div class="card">
+    <div id="memberName"></div>
+    <div id="recordsList"></div>
+  </div>
+</div>
+
+<script>
+const sb = supabase.createClient(
+  "https://tsropshzbqrfladkgwsr.supabase.co",
+  "sb_publishable_13HduBGv5qjNmCusvyfkMw_fcV1V6Jm"
+);
+
+// URL 파라미터에서 member_id 가져오기
+const urlParams = new URLSearchParams(window.location.search);
+const memberId = parseInt(urlParams.get('member_id'));
+
+if (!memberId) {
+  alert('멤버 정보가 없습니다.');
+  window.location.href = 'index.html';
+}
+
+async function loadHistory() {
+  // 멤버 정보 가져오기
+  const { data: member } = await sb
+    .from("members")
+    .select("*")
+    .eq("id", memberId)
+    .single();
+
+  if (!member) {
+    alert('멤버를 찾을 수 없습니다.');
+    window.location.href = 'index.html';
+    return;
+  }
+
+  document.getElementById("memberName").innerHTML = `<h2>${member.name}의 기록</h2>`;
+
+  // 기록 가져오기 (deleted = false인 것만, id 오름차순)
+  const { data: records } = await sb
+    .from("records")
+    .select("*")
+    .eq("member_id", memberId)
+    .eq("deleted", false)
+    .order("id", { ascending: true });
+
+  // 전역 변수로 저장 (deleteRecord 함수에서 사용)
+  window.currentRecords = records || [];
+
+  const recordsList = document.getElementById("recordsList");
+  recordsList.innerHTML = "";
+
+  if (!records || records.length === 0) {
+    recordsList.innerHTML = "<div style='text-align: center; padding: 20px; color: #999;'>기록이 없습니다.</div>";
+    return;
+  }
+
+  records.forEach(record => {
+    const date = new Date(record.created_at);
+    const dateString = date.toLocaleString('ko-KR', {
+      year: '2-digit',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(/\. /g, '.').replace(/\.$/, '').replace(/\.(?=[^.]*$)/, ' ');
+
+    const recordItem = document.createElement("div");
+    recordItem.className = "record-item";
+    recordItem.innerHTML = `
+      <div class="record-info">
+        <div class="record-date">${dateString}</div>
+        <div class="record-distance">${record.base_distance}km (${record.weighted_mileage}km)</div>
+      </div>
+      <button class="delete-btn" onclick="deleteRecord(${record.id})" title="삭제">✕</button>
+    `;
+    recordsList.appendChild(recordItem);
+  });
+}
+
+async function deleteRecord(recordId) {
+  // 삭제하려는 기록 정보 찾기
+  const record = window.currentRecords.find(r => r.id === recordId);
+  
+  if (!record) {
+    alert('기록을 찾을 수 없습니다.');
+    return;
+  }
+
+  // 날짜시간 포맷팅
+  const date = new Date(record.created_at);
+  const dateString = date.toLocaleString('ko-KR', {
+    year: '2-digit',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).replace(/\. /g, '.').replace(/\.$/, '').replace(/\.(?=[^.]*$)/, ' ');
+
+  // 확인 메시지에 기록 정보 포함
+  const confirmMessage = `정말 이 기록을 삭제하시겠습니까?\n\n날짜시간: ${dateString}\n마일리지: ${record.base_distance}km (${record.weighted_mileage}km)`;
+  
+  if (!confirm(confirmMessage)) {
+    // 취소 시 이력 목록 유지 (아무 작업 없음)
+    return;
+  }
+
+  // 확인 시 삭제 처리
+  const { error } = await sb
+    .from("records")
+    .update({ deleted: true })
+    .eq("id", recordId);
+
+  if (error) {
+    alert('삭제 실패: ' + error.message);
+    return;
+  }
+
+  alert('삭제되었습니다.');
+  loadHistory(); // 목록 새로고침
+}
+
+loadHistory();
+</script>
+</body>
+</html>
+

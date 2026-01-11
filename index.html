@@ -307,7 +307,7 @@ async function loadBoard() {
 
   const { data: teams } = await sb.from("teams").select("*").order("id");
   const { data: members } = await sb.from("members").select("*");
-  const { data: records } = await sb.from("records").select("*").order("id");
+  const { data: records } = await sb.from("records").select("*").eq("deleted", false).order("id");
 
   const totals = {};
   records.forEach(r => {
@@ -315,11 +315,11 @@ async function loadBoard() {
   });
 
   members
-    .map(m => ({ name: m.name, total: totals[m.id] || 0 }))
+    .map(m => ({ id: m.id, name: m.name, total: totals[m.id] || 0 }))
     .sort((a,b)=>b.total-a.total)
     .forEach((m,i)=>{
       const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}위`;
-      globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${(Math.floor(m.total*10)/10).toFixed(1)}km</span></div>`;
+      globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${(Math.floor(m.total*10)/10).toFixed(1)}km <a href="history.html?member_id=${m.id}" title="이력조회">📋</a></span></div>`;
     });
 
   teams.forEach(t => {
@@ -341,12 +341,12 @@ async function loadBoard() {
     teamTotals.forEach((m,i)=>{
       const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":"";
       const record = records.findLast(r=>r.member_id===m.id);
-      const proof_url = record.proof_url;
-      const simbol = record.weighted_mileage > 0 ? "+" : ""
+      const proof_url = record ? record.proof_url : null;
+      const simbol = record && record.weighted_mileage > 0 ? "+" : ""
       board.innerHTML += `
         <div class="member">
           <span>${medal} ${m.name} (${m.target_mileage || 0})</span>
-          <span>${(Math.floor(m.total*10)/10).toFixed(1)}km (${simbol}${record.weighted_mileage}) ${
+          <span>${(Math.floor(m.total*10)/10).toFixed(1)}km ${record ? `(${simbol}${record.weighted_mileage})` : ''} ${
           proof_url ? `<a href="${proof_url}" target="_blank">📎</a>` : ""
           }</span>
         </div>`;
