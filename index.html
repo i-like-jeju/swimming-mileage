@@ -319,7 +319,7 @@ async function loadBoard() {
     .sort((a,b)=>b.total-a.total)
     .forEach((m,i)=>{
       const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}위`;
-      globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${(Math.floor(m.total*10)/10).toFixed(1)}km <a href="history.html?member_id=${m.id}" title="이력조회">📋</a></span></div>`;
+      globalRank.innerHTML += `<div class="member"><span>${medal} ${m.name}</span><span>${m.total.toFixed(1)}km <a href="history.html?member_id=${m.id}" title="이력조회">📋</a></span></div>`;
     });
 
   teams.forEach(t => {
@@ -330,11 +330,11 @@ async function loadBoard() {
                     .reduce((s,r)=>s+Number(r.weighted_mileage),0)
     })).sort((a,b)=>b.total-a.total);
 
-    const teamSum = teamTotals.reduce((s, m) => s + (Math.floor(m.total * 10) / 10), 0);
+    const teamSum = teamTotals.reduce((s, m) => s + m.total, 0);
     const achievementRate = t.target_mileage > 0 ? (teamSum / t.target_mileage * 100).toFixed(2) : "0.00";
 
     board.innerHTML += `
-      <div class="team">● ${t.name} (${(Math.floor(teamSum*10)/10).toFixed(1)} / ${t.target_mileage}) : ${achievementRate}%</div>
+      <div class="team">● ${t.name} (${teamSum.toFixed(1)} / ${t.target_mileage}) : ${achievementRate}%</div>
       <div class="progress"><div style="width:${Math.min(100,teamSum/t.target_mileage*100)}%"></div></div>
     `;
 
@@ -346,7 +346,7 @@ async function loadBoard() {
       board.innerHTML += `
         <div class="member">
           <span>${medal} ${m.name} (${m.target_mileage || 0})</span>
-          <span>${(Math.floor(m.total*10)/10).toFixed(1)}km ${record ? `(${simbol}${record.weighted_mileage})` : ''} ${
+          <span>${m.total.toFixed(1)}km ${record ? `(${simbol}${record.weighted_mileage})` : ''} ${
           proof_url ? `<a href="${proof_url}" target="_blank">📎</a>` : ""
           }</span>
         </div>`;
